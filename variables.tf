@@ -14,6 +14,9 @@ variable "redis_namespace" {
   default = "redis01"
 }
 
+variable "sb_blob" {
+  default = "alstr01"
+}
 variable "sb_namespace" {
   default = "alsb01"
 }
@@ -44,4 +47,9 @@ variable "servicelevel" {
   #Premium (P1): 7203483a-c4fb-4304-9e9f-17c71c904f5d 
   #Premium (P2): a7d1b92d-c987-4375-b54d-2b1d0e0f5bb0 
   #Premium (P3): a7c4c615-cfb1-464b-b252-925be0a19446
+}
+
+# TODO: find the vault value
+variable "vaultValue"{
+  default = ""
 }
