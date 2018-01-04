@@ -13,7 +13,7 @@ resource "azurerm_resource_group" "service_bus_rg" {
 resource "azurerm_servicebus_namespace" "service_bus" {
     name        = "servicebus"
     location    = "${var.location}"
-    resource_group_name = "${azurerm_resource_group.service_bus_rg}"
+    resource_group_name = "${azurerm_resource_group.service_bus_rg.name}"
     sku         = "basic"
 }
 
@@ -38,7 +38,7 @@ resource "azurerm_public_ip" "loadbalancer_publicip" {
     location                     = "${azurerm_resource_group.service_bus_rg.location}"
     resource_group_name          = "${azurerm_resource_group.service_bus_rg.name}"
     public_ip_address_allocation = "static"
-    domain_name_label            = "${azurerm_resource_group.test.name}"
+    domain_name_label            = "${azurerm_resource_group.service_bus_rg.name}"
 
 }
 
@@ -50,7 +50,7 @@ resource "azurerm_lb" "Loadbalancer" {
     
     frontend_ip_configuration {
         name        = "LoadBalancerIP"
-        public_ip_address_id = ${azurerm_public_ip.loadbalancer_publicip.id}
+        public_ip_address_id = "${azurerm_public_ip.loadbalancer_publicip.id}"
     }
 }
 
@@ -117,12 +117,12 @@ resource "azurerm_lb_nat_pool" "LoadBalancerBEAddressNatPool" {
 }
 
 # Blob storage accounts
-resource "azurerm_storage_account" "sb_storage_account" {
-  name                        = "ServiceBus_StorageAccount"
+resource "azurerm_storage_account" "sbstrgacc" {
+  name                        = "servicebusstorageaccount"
   resource_group_name         = "${azurerm_resource_group.service_bus_rg.name}"
   location                    = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier                = "Standard"
-  access_tier                 = "Cold"
+  access_tier                 = "Cool"
   enable_blob_encryption      = true
   account_replication_type    = "RAGRS"
 
@@ -131,7 +131,7 @@ resource "azurerm_storage_account" "sb_storage_account" {
 resource "azurerm_storage_container" "sb_storage_container" {
   name            = "vhds"
   resource_group_name = "${azurerm_resource_group.service_bus_rg.name}"
-  storage_account_name = "${azurerm_storage_account.sb_storage_account.name}"
+  storage_account_name = "${azurerm_storage_account.sbstrgacc.name}"
   container_access_type = "private" #TODO review this value
 }
 
@@ -139,62 +139,62 @@ resource "azurerm_storage_container" "sb_storage_container" {
 resource "azurerm_storage_blob" "sb_blob" {
   name = "${var.prefix}-${var.sb_blob}"
   resource_group_name = "${azurerm_resource_group.service_bus_rg.name}"
-  storage_account_name = "${azurerm_storage_account.sb_storage_account.name}"
+  storage_account_name = "${azurerm_storage_account.sbstrgacc.name}"
   storage_container_name = "${azurerm_storage_container.sb_storage_container.name}"
 }
 
 # supportLogStorageAccount
 resource "azurerm_storage_account" "supportLogStorageAccount" {
-  name                      = "${var.prefix}-supportLogStorageAccount"
+  name                      = "supportlogstorageaccount"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 
 # applicationDiagnosticsStorageAccountType 
-resource "azurerm_storage_account" "applicationDiagnosticsStorage" {
-  name                      = "${var.prefix}-applicationDiagnosticsStorage"
+resource "azurerm_storage_account" "appdiagstrg" {
+  name                      = "appdiagstrg" # lowercase only
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 
 # 5 separate storage accounts for application.....
 resource "azurerm_storage_account" "sf_storage_account01" {
-  name                      = "${var.prefix}-sf_storage_account01"
+  name                      = "sfstorageaccount01"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 resource "azurerm_storage_account" "sf_storage_account02" {
-  name                      = "${var.prefix}-sf_storage_account01"
+  name                      = "sfstorageaccount02"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 resource "azurerm_storage_account" "sf_storage_account03" {
-  name                      = "${var.prefix}-sf_storage_account01"
+  name                      = "sftorageaccount03"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 resource "azurerm_storage_account" "sf_storage_account04" {
-  name                      = "${var.prefix}-sf_storage_account01"
+  name                      = "sfstorageaccount04"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 resource "azurerm_storage_account" "sf_storage_account05" {
-  name                      = "${var.prefix}-sf_storage_account01"
+  name                      = "sfstorageaccount05"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
-  account_teir              = "Standard"
+  account_tier              = "Standard"
   account_replication_type  = "LRS"
 }
 
@@ -213,36 +213,26 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   }
 
   extension { 
-    name                    = "alapi01"
-    publisher               = "Microsoft.Azure.ServiceFabric"
-    type                    = "ServiceFabricNode"
-    typeHandlerVersion      = "1.0"
-    autoUpgradeMinorVersion = true
-    protected_settings {  
-      StorageAccountKey1 = "${azurerm_storage_account.supportLogStorageAccount.primary_access_key}"
-      StorageAccountKey2 = "${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}"
-    }
+    name                        = "alapi01"
+    publisher                   = "Microsoft.Azure.ServiceFabric"
+    type                        = "ServiceFabricNode"
+    type_handler_version        = "1.0"
+    auto_upgrade_minor_version  = true
+    #settings                    =
+    protected_settings = "{StorageAccountKey1:\"${azurerm_storage_account.supportLogStorageAccount.primary_access_key}\", StorageAccountKey2: \"${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}\" }"
 
     # TODO fill in the cluster name and certificate ..... has to be created from ARM template because its not supported by terraform
     # specified as a JSON object in a string 
-    settings                = " {
-      \"clusterEndpoint\" : \"\"
-      \"nodeTypeRef\" : \"alapi01\"
-      \"dataPath\" : \"D:\\\\SvcFab\"
-      \"durabilityLevel\" : \"Bronze\"
-      \"enableParallelJobs\" : true
-      \"nicePrefixOverride\" : \"Subnet-0\"
-      \"certificate\" : {
-        tumbprint : \"\"
-        x509StoreName : \"\"
-      }
-    }"
+    #settings                = "{ \"clusterEndpoint\" : \"\" \"nodeTypeRef\" : \"alapi01\" \"dataPath\" : \"D:\\\\SvcFab\" \"durabilityLevel\" : \"Bronze\" \"enableParallelJobs\" : true \"nicePrefixOverride\" : \"Subnet-0\" \"certificate\" : { tumbprint : \"\" x509StoreName : \"\" } }"
   }
   
   # TODO: Add in the second extension VMDiagnosticsVmExt?
-  extension {
-    name              = ""
-  }
+  #extension {
+  #  name              = "VMDiagnosticsVmExt_vmNodeType0Name"
+  #  publisher         = "Microsoft.Azure.Diagnostics"
+  #  type              = "IaaSDiagnostics"
+  #  type_handler_version = "1.5"
+  #}
 
   network_profile {
     name    = "NIC-0"
@@ -263,6 +253,21 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     version   = "latest"
   }
 
+  os_profile {
+    computer_name_prefix = "alapi01"
+    admin_username       = "${var.adminusername}"
+    admin_password       = "${var.adminpassword}"
+  }
+
+  #TODO:  double check the vaule
+  os_profile_secrets {
+    source_vault_id = "${azurerm_key_vault.vault.id}"
+    vault_certificates {
+      certificate_url         = "${azurerm_key_vault.vault.vault_uri}"
+      certificate_store       = "My"
+    }
+  }
+
   storage_profile_os_disk {
     name              = "vmssosdisk"
     caching           = "ReadOnly"
@@ -272,19 +277,9 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
                        "${azurerm_storage_account.sf_storage_account03.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account04.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account05.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}" ] 
-
   }
 
-  os_profile {
-    computer_name_prefix = "alapi01"
-    admin_username       = "${var.adminusername}"
-    admin_password       = "${var.adminpassword}"
-  }
-
-  #TODO: find out the vault value
-  os_profile_secrets {
-    source_vault_id = ""
-    valut_certificates = ""
-  }
 
 # TODO: servicefabric clusters MISSING? https://github.com/terraform-providers/terraform-provider-azurerm/issues/541
+
+}
