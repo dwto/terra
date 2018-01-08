@@ -11,7 +11,7 @@ resource "azurerm_resource_group" "service_bus_rg" {
 }
 
 resource "azurerm_servicebus_namespace" "service_bus" {
-    name        = "servicebus"
+    name        = "${var.prefix}-servicebus"
     location    = "${var.location}"
     resource_group_name = "${azurerm_resource_group.service_bus_rg.name}"
     sku         = "basic"
@@ -34,7 +34,7 @@ resource "azurerm_subnet" "subnet0" {
 
 # Virtual Network
 resource "azurerm_public_ip" "loadbalancer_publicip" {
-    name                         = "LBIP"
+    name                         = "LoadBalancerIP"
     location                     = "${azurerm_resource_group.service_bus_rg.location}"
     resource_group_name          = "${azurerm_resource_group.service_bus_rg.name}"
     public_ip_address_allocation = "static"
@@ -99,7 +99,7 @@ resource "azurerm_lb_probe" "FabricHttpGatewayProbe" {
   loadbalancer_id       = "${azurerm_lb.Loadbalancer.id}"
   name                  = "FabricGateWayProbe"
   port                  = 19080 
-  protocol              = "Http" 
+  protocol              = "Tcp" 
   number_of_probes      = 2
   interval_in_seconds   = 5
 }
@@ -113,7 +113,7 @@ resource "azurerm_lb_nat_pool" "LoadBalancerBEAddressNatPool" {
   frontend_port_start            = 3389
   frontend_port_end              = 4500
   backend_port                   = 3389
-  frontend_ip_configuration_name = "PublicIPAddress"
+  frontend_ip_configuration_name = "LoadBalancerIP"
 }
 
 # Blob storage accounts
@@ -122,7 +122,7 @@ resource "azurerm_storage_account" "sbstrgacc" {
   resource_group_name         = "${azurerm_resource_group.service_bus_rg.name}"
   location                    = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier                = "Standard"
-  access_tier                 = "Cool"
+  #access_tier                 = "Cold"
   enable_blob_encryption      = true
   account_replication_type    = "RAGRS"
 
@@ -177,7 +177,7 @@ resource "azurerm_storage_account" "sf_storage_account02" {
   account_replication_type  = "LRS"
 }
 resource "azurerm_storage_account" "sf_storage_account03" {
-  name                      = "sftorageaccount03"
+  name                      = "sfstorageaccount03"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -219,7 +219,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     type_handler_version        = "1.0"
     auto_upgrade_minor_version  = true
     #settings                    =
-    protected_settings = "{StorageAccountKey1:\"${azurerm_storage_account.supportLogStorageAccount.primary_access_key}\", StorageAccountKey2: \"${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}\" }"
+    protected_settings = "{\"StorageAccountKey1\":\"${azurerm_storage_account.supportLogStorageAccount.primary_access_key}\", \"StorageAccountKey2\": \"${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}\" }"
 
     # TODO fill in the cluster name and certificate ..... has to be created from ARM template because its not supported by terraform
     # specified as a JSON object in a string 
@@ -263,7 +263,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   os_profile_secrets {
     source_vault_id = "${azurerm_key_vault.vault.id}"
     vault_certificates {
-      certificate_url         = "${azurerm_key_vault.vault.vault_uri}"
+      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.wincert.name}/${azurerm_key_vault_certificate.wincert.version}"
       certificate_store       = "My"
     }
   }
@@ -272,11 +272,12 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     name              = "vmssosdisk"
     caching           = "ReadOnly"
     create_option     = "FromImage"
-    vhd_containers = ["${azurerm_storage_account.sf_storage_account01.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
+    vhd_containers    = ["${azurerm_storage_account.sf_storage_account01.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account02.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account03.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account04.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account05.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}" ] 
+    #managed_disk_type = standard_lrs/premium_lrs .... check if we're using this option
   }
 
 

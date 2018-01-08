@@ -2,6 +2,8 @@ variable "prefix" {
   default = "dwto-dev"
 }
 
+######## Variables coming from setenv.ps1 ###########
+
 variable "arm_subscription_id" {
   type = "string"
 }
@@ -14,9 +16,14 @@ variable "arm_client_secret" {
   type = "string"
 }
 
+variable "arm_object_id" {
+  type = "string"
+}
+
 variable "arm_tenant_id" {
   type = "string"
 }
+####################################################
 
 variable "search_namespace" {
   default = "alsearch01"

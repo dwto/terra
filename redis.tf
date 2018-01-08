@@ -1,3 +1,5 @@
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_resource_group" "redis_rg" {
     name        = "${var.prefix}-${var.redis_namespace}"
     location    = "${var.location}"
@@ -31,24 +33,23 @@ resource "azurerm_redis_cache" "redis" {
   redis_configuration {}
 }
 
-
+# TODO: get permissions....
 resource "azurerm_key_vault" "vault" {
-  name            = "vault"
-  location        = "${azurerm_resource_group.redis_rg.location}"
-  resource_group_name = "${azurerm_resource_group.redis_rg.name}"
-  enabled_for_deployment = true
-  enabled_for_disk_encryption = true
-  enabled_for_template_deployment= true
+  name                              = "${var.prefix}-vault"
+  location                          = "${azurerm_resource_group.redis_rg.location}"
+  resource_group_name               = "${azurerm_resource_group.redis_rg.name}"
+  enabled_for_deployment            = true
+  enabled_for_disk_encryption       = true
+  enabled_for_template_deployment   = true
+  tenant_id = "${data.azurerm_client_config.current.tenant_id}"
 
   sku {
     name = "standard"
   }
 
-  tenant_id = "${var.arm_tenant_id}"
-
   access_policy {
-    tenant_id = "${var.arm_tenant_id}"
-    object_id = "${var.arm_client_id}"
+    tenant_id = "${data.azurerm_client_config.current.tenant_id}"
+    object_id = "${data.azurerm_client_config.current.service_principal_object_id}"
 
     key_permissions = [
       "get",
@@ -57,9 +58,15 @@ resource "azurerm_key_vault" "vault" {
       "create",
       "import",
       "delete",
-      #"recover",
-      #"backup",
-      #"restore"
+      "recover",
+      "backup",
+      "restore",
+      "decrypt",
+      "encrypt",
+      "unwrapKey",
+      "wrapKey",
+      "verify",
+      "sign"
     ]
 
     secret_permissions = [
@@ -72,20 +79,65 @@ resource "azurerm_key_vault" "vault" {
       "restore"
     ]
 
-    certificate_permissions = [
-      "get",
-      "list",
-      "update",
-      "create",
-      "import",
+    certificate_permissions = ["create",
       "delete",
-      #"recover",
-      #"backup",
-      #"restore"
+      "deleteissuers",
+      "get",
+      "getissuers",
+      "import",
+      "list",
+      "listissuers",
+      "managecontacts",
+      "manageissuers",
+      "setissuers",
+      "update"
     ]
   }
-
-
-
 }
 
+# TODO: is not able to create the certificate
+resource "azurerm_key_vault_certificate" "wincert" {
+  name    = "wincert"
+  vault_uri = "${azurerm_key_vault.vault.vault_uri}"
+
+  certificate_policy {
+    issuer_parameters {
+      name = "Self"
+    }
+
+    key_properties {
+      exportable = true
+      key_size = 2048
+      key_type = "RSA"
+      reuse_key = true
+    }
+
+    lifetime_action {
+      action {
+        action_type = "AutoRenew"
+      }
+
+      trigger {
+        days_before_expiry = 30
+      }
+    }
+
+    secret_properties {
+      content_type = "application/x-pkcs12"
+    }
+
+    x509_certificate_properties {
+        key_usage =[ 
+          "cRLSign",
+          "dataEncipherment",
+          "digitalSignature",
+          "keyAgreement",
+          "keyCertSign",
+          "keyEncipherment",
+        ]
+
+        subject           = "CN=hello-world"
+        validity_in_months = 12
+    }
+  }
+}
