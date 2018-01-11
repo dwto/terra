@@ -94,15 +94,17 @@ resource "azurerm_lb_probe" "FabricGateWayProbe" {
   interval_in_seconds   = 5
 }
 
+/*
 resource "azurerm_lb_probe" "FabricHttpGatewayProbe" {
   resource_group_name   = "${azurerm_resource_group.service_bus_rg.name}"
   loadbalancer_id       = "${azurerm_lb.Loadbalancer.id}"
-  name                  = "FabricGateWayProbe"
+  name                  = "FabricHttpGateWayProbe"
   port                  = 19080 
-  protocol              = "Tcp" 
+  protocol              = "Http" 
   number_of_probes      = 2
   interval_in_seconds   = 5
 }
+*/
 
 # inboundNatPools
 resource "azurerm_lb_nat_pool" "LoadBalancerBEAddressNatPool" {
@@ -198,13 +200,20 @@ resource "azurerm_storage_account" "sf_storage_account05" {
   account_replication_type  = "LRS"
 }
 
-# TODO: virtualMachineScaleSets
+# TODO: virtualMachineScaleSets, hanging.....
+# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m0s elapsed)
+# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m10s elapsed)
+# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m20s elapsed)
+# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m30s elapsed)
 resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   name                      = "vmScaleSet"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
+  #TODO: change this to automatic afterwards
+  #upgrade_policy_mode       = "Automatic"
   upgrade_policy_mode       = "Automatic"
   overprovision             = false
+  depends_on = ["azurerm_template_deployment.servicefabric"]
 
   sku {
     name        = "Standard_D1_v2"
@@ -212,18 +221,35 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     capacity    = 3
   }
 
+  # ServiceFabric extension
+  # TODO double check if thumbprint is the same as version number
   extension { 
     name                        = "alapi01"
     publisher                   = "Microsoft.Azure.ServiceFabric"
     type                        = "ServiceFabricNode"
     type_handler_version        = "1.0"
     auto_upgrade_minor_version  = true
-    #settings                    =
-    protected_settings = "{\"StorageAccountKey1\":\"${azurerm_storage_account.supportLogStorageAccount.primary_access_key}\", \"StorageAccountKey2\": \"${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}\" }"
+    settings                    = <<SETTINGS
+      {
+        "clusterEndpoint": "alsvccl01.clusterEndpoint",
+        "nodeTypeRef": "alapi01",
+        "dataPath": "D:\\\\SvcFab",
+        "durabilityLevel": "Bronze",
+        "enableParallelJobs": true,
+        "nicPrefixOverride": "10.0.0.0/24",
+        "certificate": {
+            "thumbprint": "8CA41E743D57371896842C2AD3F81D607224CDA2",
+            "x509StoreName": "My"
+        }
+      }
 
-    # TODO fill in the cluster name and certificate ..... has to be created from ARM template because its not supported by terraform
-    # specified as a JSON object in a string 
-    #settings                = "{ \"clusterEndpoint\" : \"\" \"nodeTypeRef\" : \"alapi01\" \"dataPath\" : \"D:\\\\SvcFab\" \"durabilityLevel\" : \"Bronze\" \"enableParallelJobs\" : true \"nicePrefixOverride\" : \"Subnet-0\" \"certificate\" : { tumbprint : \"\" x509StoreName : \"\" } }"
+      SETTINGS
+    protected_settings = <<PROTECTEDSETTINGS
+      {
+        "StorageAccountKey1": "${azurerm_storage_account.supportLogStorageAccount.primary_access_key}",
+        "StorageAccountKey2": "${azurerm_storage_account.supportLogStorageAccount.secondary_access_key}" 
+      }
+    PROTECTEDSETTINGS
   }
   
   # TODO: Add in the second extension VMDiagnosticsVmExt?
@@ -233,6 +259,53 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   #  type              = "IaaSDiagnostics"
   #  type_handler_version = "1.5"
   #}
+  extension { 
+    name                        = "VMDiagnosticsVmExt_vmNodeType0Name"
+    publisher                   = "Microsoft.Azure.Diagnostics"
+    type                        = "IaaSDiagnostics"
+    type_handler_version        = "1.5"
+    auto_upgrade_minor_version  = true
+    settings                    = <<SETTINGS
+      {
+        "WadCfg": {
+          "DiagnosticMonitorConfiguration": {
+              "overallQuotaInMB": "50000",
+              "EtwProviders": {
+                  "EtwEventSourceProviderConfiguration": [
+                      {
+                          "provider": "Microsoft-ServiceFabric-Actors",
+                          "scheduledTransferKeywordFilter": "1",
+                          "scheduledTransferPeriod": "PT5M",
+                          "DefaultEvents": {
+                              "eventDestination": "ServiceFabricReliableActorEventTable"
+                          }
+                      },
+                      {
+                          "provider": "Microsoft-ServiceFabric-Services",
+                          "scheduledTransferPeriod": "PT5M",
+                          "DefaultEvents": {
+                              "eventDestination": "ServiceFabricReliableServiceEventTable"
+                          }
+                      }
+                  ],
+                  "EtwManifestProviderConfiguration": [
+                      {
+                          "provider": "cbd93bc2-71e5-4566-b3a7-595d8eeca6e8",
+                          "scheduledTransferLogLevelFilter": "Information",
+                          "scheduledTransferKeywordFilter": "4611686018427387904",
+                          "scheduledTransferPeriod": "PT5M",
+                          "DefaultEvents": {
+                              "eventDestination": "ServiceFabricSystemEventTable"
+                          }
+                      }
+                  ]
+              }
+            }
+          },
+        "StorageAccount": "appdiagstrg"
+      }
+    SETTINGS
+  }
 
   network_profile {
     name    = "NIC-0"
@@ -263,7 +336,11 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   os_profile_secrets {
     source_vault_id = "${azurerm_key_vault.vault.id}"
     vault_certificates {
-      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.wincert.name}/${azurerm_key_vault_certificate.wincert.version}"
+      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.dwto-windowscert.name}/215e32b8cd25456b9d558e74f8ae4d7a"
+
+      # This is giving some weird value... even though it suppose to be returning the version number.......
+      #certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.windowscert.name}/${azurerm_key_vault_certificate.windowscert.version}"
+      #certificate_url           = "${azurerm_key_vault_certificate.windowscert.id}"
       certificate_store       = "My"
     }
   }
@@ -277,10 +354,217 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
                        "${azurerm_storage_account.sf_storage_account03.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account04.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}",
                        "${azurerm_storage_account.sf_storage_account05.primary_blob_endpoint}${azurerm_storage_container.sb_storage_container.name}" ] 
-    #managed_disk_type = standard_lrs/premium_lrs .... check if we're using this option
   }
+}
 
 
 # TODO: servicefabric clusters MISSING? https://github.com/terraform-providers/terraform-provider-azurerm/issues/541
+resource "azurerm_template_deployment" "servicefabric" {
+  name                          = "${var.prefix}-servicefabric"
+  resource_group_name           = "${azurerm_resource_group.service_bus_rg.name}"
+  template_body = <<DEPLOY
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+
+  "parameters": {
+    "clusterName": {
+      "defaultValue": "Cluster",
+      "type": "String",
+      "metadata": {
+        "description": "Name of your cluster - Between 3 and 23 characters. Letters and numbers only"
+      }
+    },
+    "clusterLocation": {
+      "type": "String",
+      "metadata": {
+        "description": "Location of the Cluster"
+      }
+    },
+    "certificateThumbprint": {
+      "type": "String",
+      "metadata": {
+        "description": "Certificate Thumbprint"
+      }
+    },
+    "certificateStoreValue": {
+      "defaultValue": "My",
+      "allowedValues": [
+        "My"
+      ],
+      "type": "String",
+      "metadata": {
+        "description": "The store name where the cert will be deployed in the virtual machine"
+      }
+    },
+    "supportLogStorageAccountName": {
+      "defaultValue": "supportlogstorageaccount",
+      "type": "String",
+      "metadata": {
+        "description": "Name for the storage account that contains support logs from the cluster"
+      }
+    },
+    "clusterProtectionLevel": {
+      "defaultValue": "EncryptAndSign",
+      "allowedValues": [
+        "None",
+        "Sign",
+        "EncryptAndSign"
+      ],
+      "type": "String",
+      "metadata": {
+        "description": "Protection level.Three values are allowed - EncryptAndSign, Sign, None. It is best to keep the default of EncryptAndSign, unless you have a need not to"
+      }
+    },
+    "nt0fabricHttpGatewayPort": {
+      "defaultValue": 19080,
+      "type": "Int"
+    },
+    "vmNodeType0Name": {
+      "defaultValue": "alapi01",
+      "maxLength": 9,
+      "type": "String"
+    },
+    "nt0applicationEndPort": {
+      "defaultValue": 30000,
+      "type": "Int"
+    },
+    "nt0applicationStartPort": {
+      "defaultValue": 20000,
+      "type": "Int"
+    },
+    "nt0fabricTcpGatewayPort": {
+      "defaultValue": 19000,
+      "type": "Int"
+    },
+    "nt0ephemeralEndPort": {
+      "defaultValue": 65534,
+      "type": "Int"
+    },
+    "nt0ephemeralStartPort": {
+      "defaultValue": 49152,
+      "type": "Int"
+    },
+    "nt0InstanceCount": {
+      "defaultValue": 3,
+      "type": "Int",
+      "metadata": {
+        "description": "Instance count for node type"
+      }
+    },
+    "lbIPName": {
+      "type": "String"
+    }
+  },
+
+  "variables": {
+    "storageApiVersion":  "2016-01-01"
+  },
+
+  "resources": [
+    {
+      "type": "Microsoft.ServiceFabric/clusters",
+      "name": "[parameters('clusterName')]",
+      "apiVersion": "2017-07-01-preview",
+      "location": "[parameters('clusterLocation')]",
+      "tags": {
+        "resourceType": "Service Fabric",
+        "clusterName": "[parameters('clusterName')]"
+      },
+      "properties": {
+        "addonFeatures": [ "DnsService" ],
+        "certificate": {
+          "thumbprint": "[parameters('certificateThumbprint')]",
+          "x509StoreName": "[parameters('certificateStoreValue')]"
+        },
+        "clientCertificateCommonNames": [],
+        "clientCertificateThumbprints": [],
+        "clusterState": "Default",
+        "diagnosticsStorageAccountConfig": {
+          "blobEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.blob]",
+          "protectedAccountKeyName": "StorageAccountKey1",
+          "queueEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.queue]",
+          "storageAccountName": "[parameters('supportLogStorageAccountName')]",
+          "tableEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.table]"
+        },
+        "fabricSettings": [
+          {
+            "parameters": [
+              {
+                "name": "ClusterProtectionLevel",
+                "value": "[parameters('clusterProtectionLevel')]"
+              }
+            ],
+            "name": "Security"
+          }
+        ],
+        "managementEndpoint": "[concat('https://',parameters('lbIPName'),':',parameters('nt0fabricHttpGatewayPort'))]",
+        "nodeTypes": [
+          {
+            "name": "[parameters('vmNodeType0Name')]",
+            "applicationPorts": {
+              "endPort": "[parameters('nt0applicationEndPort')]",
+              "startPort": "[parameters('nt0applicationStartPort')]"
+            },
+            "clientConnectionEndpointPort": "[parameters('nt0fabricTcpGatewayPort')]",
+            "durabilityLevel": "Bronze",
+            "ephemeralPorts": {
+              "endPort": "[parameters('nt0ephemeralEndPort')]",
+              "startPort": "[parameters('nt0ephemeralStartPort')]"
+            },
+            "httpGatewayEndpointPort": "[parameters('nt0fabricHttpGatewayPort')]",
+            "isPrimary": true,
+            "vmInstanceCount": "[parameters('nt0InstanceCount')]"
+          }
+        ],
+        "provisioningState": "Default",
+        "reliabilityLevel": "Bronze",
+        "upgradeMode": "Automatic",
+        "vmImage": "Windows"
+      }
+    }
+    ],
+    "outputs": {}
+}
+  DEPLOY
+
+/*
+  parameters {
+    "clusterName"                    = "alsvccl01"
+    "clusterLocation"                = "eastus"
+    "certificateThumbprint"          = "BEC1586E4328B1B6CD1E92830A12032B53314497"
+    "certificateStoreValue"          = "My"
+    "supportLogStorageAccountName"   = "sflogsalsvccl012584"
+    "clusterProtectionLevel"         = "EncryptAndSign"
+    "nt0fabricHttpGatewayPort"       = "19080"
+    "vmNodeType0Name"                = "alapi01"
+    "nt0applicationEndPort"          = "30000"
+    "nt0applicationStartPort"        = "20000"
+    "nt0fabricTcpGatewayPort"        = "19000"
+    "nt0ephemeralEndPort"            = "65534"
+    "nt0ephemeralStartPort"          = "49152"
+    "nt0InstanceCount"               = "3"
+  }
+*/
+
+  parameters {
+    "clusterName"                    = "alsvccl01"
+    "clusterLocation"                = "${azurerm_resource_group.service_bus_rg.location}"
+    "certificateThumbprint"          = "${azurerm_key_vault_certificate.dwto-windowscert.version}"
+    "certificateStoreValue"          = "My"
+    "supportLogStorageAccountName"   = "${azurerm_storage_account.supportLogStorageAccount.name}"
+    #"clusterProtectionLevel"         = "EncryptAndSign"
+    #"nt0fabricHttpGatewayPort"       = "${azurerm_lb_rule.LBHttpRule.frontend_port}"
+    #"vmNodeType0Name"                = "alapi01"
+    #"nt0applicationEndPort"          = 30000
+    #"nt0applicationStartPort"        = "20000"
+    #"nt0fabricTcpGatewayPort"        = "${azurerm_lb_rule.LBRule.frontend_port}"
+    #"nt0ephemeralEndPort"            = "65534"
+    #"nt0ephemeralStartPort"          = "49152"
+    #"nt0InstanceCount"               = 3
+    "lbIPName"                      =  "${azurerm_public_ip.loadbalancer_publicip.fqdn}"
+  }
+
+  deployment_mode = "Incremental"
 
 }

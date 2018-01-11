@@ -96,8 +96,8 @@ resource "azurerm_key_vault" "vault" {
 }
 
 # TODO: is not able to create the certificate
-resource "azurerm_key_vault_certificate" "wincert" {
-  name    = "wincert"
+resource "azurerm_key_vault_certificate" "dwto-windowscert" {
+  name    = "dwto-windowscert"
   vault_uri = "${azurerm_key_vault.vault.vault_uri}"
 
   certificate_policy {
@@ -141,3 +141,7 @@ resource "azurerm_key_vault_certificate" "wincert" {
     }
   }
 }
+
+
+
+# Need to save Certificate Version, Thumbprint 
