@@ -51,53 +51,32 @@ resource "azurerm_key_vault" "vault" {
     tenant_id = "${data.azurerm_client_config.current.tenant_id}"
     object_id = "${data.azurerm_client_config.current.service_principal_object_id}"
 
-    key_permissions = [
-      "get",
-      "list",
-      "update",
-      "create",
-      "import",
-      "delete",
-      "recover",
-      "backup",
-      "restore",
-      "decrypt",
-      "encrypt",
-      "unwrapKey",
-      "wrapKey",
-      "verify",
-      "sign"
-    ]
+    key_permissions = [ "get", "list", "update", "create", "import", "delete", "recover",
+      "backup", "restore", "decrypt", "encrypt", "unwrapKey", "wrapKey", "verify", "sign" ]
 
-    secret_permissions = [
-      "get",
-      "list",
-      "set",
-      "delete",
-      "recover",
-      "backup",
-      "restore"
-    ]
+    secret_permissions = [ "get", "list", "set", "delete", "recover", "backup", "restore" ]
 
-    certificate_permissions = ["create",
-      "delete",
-      "deleteissuers",
-      "get",
-      "getissuers",
-      "import",
-      "list",
-      "listissuers",
-      "managecontacts",
-      "manageissuers",
-      "setissuers",
-      "update"
-    ]
+    certificate_permissions = ["create", "delete", "deleteissuers", "get", "getissuers",
+      "import", "list", "listissuers", "managecontacts", "manageissuers", "setissuers", "update" ]
+  }
+
+  access_policy {
+    tenant_id = "${var.arm_tenant_id}"
+    object_id = "${var.arm_user_id}"
+
+    key_permissions = [ "get", "list", "update", "create", "import", "delete", "recover",
+      "backup", "restore", "decrypt", "encrypt", "unwrapKey", "wrapKey", "verify", "sign" ]
+
+    secret_permissions = [ "get", "list", "set", "delete", "recover", "backup", "restore" ]
+
+    certificate_permissions = ["create", "delete", "deleteissuers", "get", "getissuers",
+      "import", "list", "listissuers", "managecontacts", "manageissuers", "setissuers", "update" ]
   }
 }
 
 # TODO: is not able to create the certificate
-resource "azurerm_key_vault_certificate" "dwto-windowscert" {
-  name    = "dwto-windowscert"
+resource "azurerm_key_vault_certificate" "wincert" {
+  name    = "wincert"
   vault_uri = "${azurerm_key_vault.vault.vault_uri}"
 
   certificate_policy {
@@ -136,12 +115,12 @@ resource "azurerm_key_vault_certificate" "dwto-windowscert" {
           "keyEncipherment",
         ]
 
-        subject           = "CN=hello-world"
+        subject           = "CN=My"
         validity_in_months = 12
     }
   }
 }
 
-
-
-# Need to save Certificate Version, Thumbprint 
+output "vault_id" {
+  value = "${azurerm_key_vault.vault.id}"
+}

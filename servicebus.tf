@@ -69,6 +69,8 @@ resource "azurerm_lb_rule" "LBRule" {
   frontend_port                  = 19000
   backend_port                   = 19000 
   frontend_ip_configuration_name = "LoadBalancerIP"
+  backend_address_pool_id        = "${azurerm_lb_backend_address_pool.lb_backend.id}"
+  probe_id                       = "${azurerm_lb_probe.FabricGateWayProbe.id}"
   enable_floating_ip             = false  
 }
 
@@ -80,6 +82,9 @@ resource "azurerm_lb_rule" "LBHttpRule" {
   frontend_port                  = 19080
   backend_port                   = 19080
   frontend_ip_configuration_name = "LoadBalancerIP"
+  backend_address_pool_id        = "${azurerm_lb_backend_address_pool.lb_backend.id}"
+  probe_id                       = "${azurerm_lb_probe.FabricHttpGateWayProbe.id}"
+  enable_floating_ip             = false  
 }
 
 
@@ -94,17 +99,15 @@ resource "azurerm_lb_probe" "FabricGateWayProbe" {
   interval_in_seconds   = 5
 }
 
-/*
 resource "azurerm_lb_probe" "FabricHttpGatewayProbe" {
   resource_group_name   = "${azurerm_resource_group.service_bus_rg.name}"
   loadbalancer_id       = "${azurerm_lb.Loadbalancer.id}"
   name                  = "FabricHttpGateWayProbe"
   port                  = 19080 
-  protocol              = "Http" 
+  protocol              = "Tcp" 
   number_of_probes      = 2
   interval_in_seconds   = 5
 }
-*/
 
 # inboundNatPools
 resource "azurerm_lb_nat_pool" "LoadBalancerBEAddressNatPool" {
@@ -200,17 +203,11 @@ resource "azurerm_storage_account" "sf_storage_account05" {
   account_replication_type  = "LRS"
 }
 
-# TODO: virtualMachineScaleSets, hanging.....
-# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m0s elapsed)
-# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m10s elapsed)
-# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m20s elapsed)
-# azurerm_virtual_machine_scale_set.vmScaleSet: Still creating... (1h49m30s elapsed)
+# VirtualMachine Scale Set
 resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
-  name                      = "vmScaleSet"
+  name                      = "alsvccl01"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
-  #TODO: change this to automatic afterwards
-  #upgrade_policy_mode       = "Automatic"
   upgrade_policy_mode       = "Automatic"
   overprovision             = false
   depends_on = ["azurerm_template_deployment.servicefabric"]
@@ -223,27 +220,29 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
 
   # ServiceFabric extension
   # TODO double check if thumbprint is the same as version number
+  # CHANGE HERE THUMBPRINT AND CERTIFICATES
   extension { 
-    name                        = "alapi01"
+    name                        = "alapi01_ServiceFabricNode"
     publisher                   = "Microsoft.Azure.ServiceFabric"
     type                        = "ServiceFabricNode"
     type_handler_version        = "1.0"
     auto_upgrade_minor_version  = true
+
     settings                    = <<SETTINGS
       {
-        "clusterEndpoint": "alsvccl01.clusterEndpoint",
+        "clusterEndpoint": "${azurerm_template_deployment.servicefabric.outputs["clusterEndpoint"]}",
         "nodeTypeRef": "alapi01",
-        "dataPath": "D:\\\\SvcFab",
+        "dataPath": "D:\\SvcFab",
         "durabilityLevel": "Bronze",
         "enableParallelJobs": true,
         "nicPrefixOverride": "10.0.0.0/24",
         "certificate": {
-            "thumbprint": "8CA41E743D57371896842C2AD3F81D607224CDA2",
+            "thumbprint": "${var.cert_thumbprint}",
             "x509StoreName": "My"
         }
       }
+    SETTINGS
 
-      SETTINGS
     protected_settings = <<PROTECTEDSETTINGS
       {
         "StorageAccountKey1": "${azurerm_storage_account.supportLogStorageAccount.primary_access_key}",
@@ -252,13 +251,6 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     PROTECTEDSETTINGS
   }
   
-  # TODO: Add in the second extension VMDiagnosticsVmExt?
-  #extension {
-  #  name              = "VMDiagnosticsVmExt_vmNodeType0Name"
-  #  publisher         = "Microsoft.Azure.Diagnostics"
-  #  type              = "IaaSDiagnostics"
-  #  type_handler_version = "1.5"
-  #}
   extension { 
     name                        = "VMDiagnosticsVmExt_vmNodeType0Name"
     publisher                   = "Microsoft.Azure.Diagnostics"
@@ -305,6 +297,15 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
         "StorageAccount": "appdiagstrg"
       }
     SETTINGS
+
+    protected_settings        = <<PROTECTED_SETTINGS
+    {
+      "storageAccountName": "[${azurerm_storage_account.appdiagstrg.name}]",
+      "storageAccountKey": "[${azurerm_storage_account.appdiagstrg.primary_access_key}]",
+      "storageAccountEndPoint": "${azurerm_storage_account.appdiagstrg.primary_blob_endpoint}"
+    }
+
+    PROTECTED_SETTINGS
   }
 
   network_profile {
@@ -332,15 +333,21 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     admin_password       = "${var.adminpassword}"
   }
 
+  os_profile_windows_config {
+    provision_vm_agent = true
+    winrm = {
+      protocol = "https"
+      # CHANGE HERE 
+      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/wincert/${var.cert_version}"
+    }
+  }
+
   #TODO:  double check the vaule
   os_profile_secrets {
     source_vault_id = "${azurerm_key_vault.vault.id}"
     vault_certificates {
-      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.dwto-windowscert.name}/215e32b8cd25456b9d558e74f8ae4d7a"
-
-      # This is giving some weird value... even though it suppose to be returning the version number.......
-      #certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/${azurerm_key_vault_certificate.windowscert.name}/${azurerm_key_vault_certificate.windowscert.version}"
-      #certificate_url           = "${azurerm_key_vault_certificate.windowscert.id}"
+      # CHANGE HERE CERTIFICATE VERSION VALUE
+      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/wincert/${var.cert_version}"
       certificate_store       = "My"
     }
   }
@@ -357,8 +364,8 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   }
 }
 
-
 # TODO: servicefabric clusters MISSING? https://github.com/terraform-providers/terraform-provider-azurerm/issues/541
+# CHANGE HERE THUMBPRINT
 resource "azurerm_template_deployment" "servicefabric" {
   name                          = "${var.prefix}-servicefabric"
   resource_group_name           = "${azurerm_resource_group.service_bus_rg.name}"
@@ -403,6 +410,15 @@ resource "azurerm_template_deployment" "servicefabric" {
       "metadata": {
         "description": "Name for the storage account that contains support logs from the cluster"
       }
+    },
+    "supportLogStorageBlobEndPoint": {
+      "type": "String"
+    },
+    "supportLogStorageQueueEndPoint": {
+      "type": "String"
+    },
+    "supportLogStorageTableEndPoint": {
+      "type": "String"
     },
     "clusterProtectionLevel": {
       "defaultValue": "EncryptAndSign",
@@ -481,11 +497,11 @@ resource "azurerm_template_deployment" "servicefabric" {
         "clientCertificateThumbprints": [],
         "clusterState": "Default",
         "diagnosticsStorageAccountConfig": {
-          "blobEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.blob]",
+          "blobEndpoint": "[parameters('supportLogStorageBlobEndPoint')]",
           "protectedAccountKeyName": "StorageAccountKey1",
-          "queueEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.queue]",
+          "queueEndpoint": "[parameters('supportLogStorageQueueEndPoint')]",
           "storageAccountName": "[parameters('supportLogStorageAccountName')]",
-          "tableEndpoint": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('supportLogStorageAccountName')), variables('storageApiVersion')).primaryEndpoints.table]"
+          "tableEndpoint": "[parameters('supportLogStorageTableEndPoint')]"
         },
         "fabricSettings": [
           {
@@ -524,7 +540,12 @@ resource "azurerm_template_deployment" "servicefabric" {
       }
     }
     ],
-    "outputs": {}
+    "outputs": {
+      "clusterEndpoint": {
+        "type": "string",
+        "value": "[reference(parameters('clusterName')).clusterEndpoint]"
+      }
+    }
 }
   DEPLOY
 
@@ -547,12 +568,17 @@ resource "azurerm_template_deployment" "servicefabric" {
   }
 */
 
+  # CHANGE HERE THUMBPRINT
   parameters {
     "clusterName"                    = "alsvccl01"
     "clusterLocation"                = "${azurerm_resource_group.service_bus_rg.location}"
-    "certificateThumbprint"          = "${azurerm_key_vault_certificate.dwto-windowscert.version}"
+    "certificateThumbprint"          = "${var.cert_thumbprint}"
     "certificateStoreValue"          = "My"
+    "supportLogStorageBlobEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_blob_endpoint}"
+    "supportLogStorageQueueEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_queue_endpoint}"
+    "supportLogStorageTableEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_table_endpoint}"
     "supportLogStorageAccountName"   = "${azurerm_storage_account.supportLogStorageAccount.name}"
+
     #"clusterProtectionLevel"         = "EncryptAndSign"
     #"nt0fabricHttpGatewayPort"       = "${azurerm_lb_rule.LBHttpRule.frontend_port}"
     #"vmNodeType0Name"                = "alapi01"
@@ -567,4 +593,8 @@ resource "azurerm_template_deployment" "servicefabric" {
 
   deployment_mode = "Incremental"
 
+}
+
+output "template_out" {
+  value = "${azurerm_template_deployment.servicefabric.outputs}"
 }

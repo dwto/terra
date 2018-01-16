@@ -2,6 +2,14 @@ variable "prefix" {
   default = "dwto-dev"
 }
 
+variable "cert_thumbprint" {
+  default = "44AFD7785D0BE5A8DB97BBAE17959F9141A784B3"
+}
+
+variable "cert_version" {
+  default = "65c4cd4ec2c7423eb42e8c0bda643169"
+}
+
 ######## Variables coming from setenv.ps1 ###########
 
 variable "arm_subscription_id" {
@@ -21,6 +29,10 @@ variable "arm_object_id" {
 }
 
 variable "arm_tenant_id" {
+  type = "string"
+}
+
+variable "arm_user_id" {
   type = "string"
 }
 ####################################################
