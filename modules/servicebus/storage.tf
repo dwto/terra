@@ -34,7 +34,7 @@ resource "azurerm_storage_account" "supportLogStorageAccount" {
 
 # applicationDiagnosticsStorageAccountType 
 resource "azurerm_storage_account" "appdiagstrg" {
-  name                      = "appdiagstrg" # lowercase only
+  name                      = "appdiagstrg" 
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"

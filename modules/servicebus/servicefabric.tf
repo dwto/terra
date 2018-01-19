@@ -1,7 +1,7 @@
 resource "azurerm_template_deployment" "servicefabric" {
   name                          = "${var.prefix}-servicefabric"
   resource_group_name           = "${azurerm_resource_group.service_bus_rg.name}"
-  deployment_mode = "Incremental"
+  deployment_mode               = "Incremental"
 
   template_body = <<DEPLOY
 {
@@ -71,7 +71,6 @@ resource "azurerm_template_deployment" "servicefabric" {
       "type": "Int"
     },
     "vmNodeType0Name": {
-      "defaultValue": "alapi01",
       "maxLength": 9,
       "type": "String"
     },
@@ -184,28 +183,24 @@ resource "azurerm_template_deployment" "servicefabric" {
   DEPLOY
 
   parameters {
-    "clusterName"                    = "alsvccl01"
-    "clusterLocation"                = "${azurerm_resource_group.service_bus_rg.location}"
-    "certificateThumbprint"          = "${var.cert_thumbprint}"
-    "certificateStoreValue"          = "My"
-    "supportLogStorageBlobEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_blob_endpoint}"
-    "supportLogStorageQueueEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_queue_endpoint}"
-    "supportLogStorageTableEndPoint"   = "${azurerm_storage_account.supportLogStorageAccount.primary_table_endpoint}"
-    "supportLogStorageAccountName"   = "${azurerm_storage_account.supportLogStorageAccount.name}"
+    "clusterName"                       = "${var.sf_namespace}"
+    "clusterLocation"                   = "${azurerm_resource_group.service_bus_rg.location}"
+    "certificateThumbprint"             = "${var.cert_thumb}"
+    "certificateStoreValue"             = "My"
+    "supportLogStorageBlobEndPoint"     = "${azurerm_storage_account.supportLogStorageAccount.primary_blob_endpoint}"
+    "supportLogStorageQueueEndPoint"    = "${azurerm_storage_account.supportLogStorageAccount.primary_queue_endpoint}"
+    "supportLogStorageTableEndPoint"    = "${azurerm_storage_account.supportLogStorageAccount.primary_table_endpoint}"
+    "supportLogStorageAccountName"      = "${azurerm_storage_account.supportLogStorageAccount.name}"
+    "vmNodeType0Name"                   = "${var.ss_namespace}"
+    "lbIPName"                          = "${azurerm_public_ip.loadbalancer_publicip.fqdn}"
 
     #"clusterProtectionLevel"         = "EncryptAndSign"
     #"nt0fabricHttpGatewayPort"       = "${azurerm_lb_rule.LBHttpRule.frontend_port}"
-    #"vmNodeType0Name"                = "alapi01"
     #"nt0applicationEndPort"          = 30000
     #"nt0applicationStartPort"        = "20000"
     #"nt0fabricTcpGatewayPort"        = "${azurerm_lb_rule.LBRule.frontend_port}"
     #"nt0ephemeralEndPort"            = "65534"
     #"nt0ephemeralStartPort"          = "49152"
     #"nt0InstanceCount"               = 3
-    "lbIPName"                      =  "${azurerm_public_ip.loadbalancer_publicip.fqdn}"
   }
-}
-
-output "template_out" {
-  value = "${azurerm_template_deployment.servicefabric.outputs}"
 }

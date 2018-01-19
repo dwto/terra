@@ -77,7 +77,3 @@ resource "azurerm_key_vault_certificate" "wincert" {
     }
   }
 }
-
-output "vault_id" {
-  value = "${azurerm_key_vault.vault.id}"
-}

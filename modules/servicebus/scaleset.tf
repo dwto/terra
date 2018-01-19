@@ -1,6 +1,6 @@
 # VirtualMachine Scale Set
 resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
-  name                      = "alsvccl01"
+  name                      = "${var.sf_namespace}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   upgrade_policy_mode       = "Automatic"
@@ -15,7 +15,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
 
   # ServiceFabric extension
   extension { 
-    name                        = "alapi01_ServiceFabricNode"
+    name                        = "${var.ss_namespace}_ServiceFabricNode"
     publisher                   = "Microsoft.Azure.ServiceFabric"
     type                        = "ServiceFabricNode"
     type_handler_version        = "1.0"
@@ -24,13 +24,13 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     settings                    = <<SETTINGS
       {
         "clusterEndpoint":      "${azurerm_template_deployment.servicefabric.outputs["clusterEndpoint"]}",
-        "nodeTypeRef":          "alapi01",
+        "nodeTypeRef":          "${var.ss_namespace}",
         "dataPath":             "D:\\SvcFab",
         "durabilityLevel":      "Bronze",
         "enableParallelJobs":   true,
         "nicPrefixOverride":    "10.0.0.0/24",
         "certificate": {
-            "thumbprint":      "${var.cert_thumbprint}",
+            "thumbprint":      "${var.cert_thumb}",
             "x509StoreName":   "My"
         }
       }
@@ -122,7 +122,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
   }
 
   os_profile {
-    computer_name_prefix = "alapi01"
+    computer_name_prefix = "${var.ss_namespace}"
     admin_username       = "${var.adminusername}"
     admin_password       = "${var.adminpassword}"
   }
@@ -131,14 +131,14 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     provision_vm_agent = true
     winrm = {
       protocol            = "https"
-      certificate_url     = "${azurerm_key_vault.vault.vault_uri}secrets/wincert/${var.cert_version}"
+      certificate_url     = "${var.vault_uri}secrets/wincert/${var.cert_ver}"
     }
   }
 
   os_profile_secrets {
-    source_vault_id = "${azurerm_key_vault.vault.id}"
+    source_vault_id = "${var.vault_id}"
     vault_certificates {
-      certificate_url           = "${azurerm_key_vault.vault.vault_uri}secrets/wincert/${var.cert_version}"
+      certificate_url           = "${var.vault_uri}secrets/wincert/${var.cert_ver}"
       certificate_store         = "My"
     }
   }

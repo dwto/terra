@@ -1,10 +1,3 @@
-data "azurerm_client_config" "current" {}
-
-resource "azurerm_resource_group" "redis_rg" {
-    name        = "${var.prefix}-${var.redis_namespace}"
-    location    = "${var.location}"
-}
-
 # TODO: might be missing some properties. HockeyAppToken, HockeyAppId, Flow_Type, Request_source
 resource "azurerm_application_insights" "insights" {
     name        = "Alliance Dev Insights"
@@ -23,12 +16,4 @@ resource "azurerm_redis_cache" "redis" {
   enable_non_ssl_port = false
 
   redis_configuration {}
-}
-
-output "instrumentation_key" {
-  value = "${azurerm_application_insights.insights.instrumentation_key}"
-}
-
-output "app_id" {
-  value = "${azurerm_application_insights.insights.app_id}"
 }
