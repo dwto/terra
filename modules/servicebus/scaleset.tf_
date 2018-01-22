@@ -1,6 +1,6 @@
 # VirtualMachine Scale Set
 resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
-  name                      = "${var.sf_namespace}"
+  name                      = "${var.loc}${var.env}${var.ss_namespace}scaleset"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   upgrade_policy_mode       = "Automatic"
@@ -15,7 +15,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
 
   # ServiceFabric extension
   extension { 
-    name                        = "${var.ss_namespace}_ServiceFabricNode"
+    name                        = "${var.loc}${var.env}${var.ss_namespace}servicefabricnode"
     publisher                   = "Microsoft.Azure.ServiceFabric"
     type                        = "ServiceFabricNode"
     type_handler_version        = "1.0"
@@ -131,14 +131,14 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     provision_vm_agent = true
     winrm = {
       protocol            = "https"
-      certificate_url     = "${var.vault_uri}secrets/wincert/${var.cert_ver}"
+      certificate_url     = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${var.cert_ver}"
     }
   }
 
   os_profile_secrets {
     source_vault_id = "${var.vault_id}"
     vault_certificates {
-      certificate_url           = "${var.vault_uri}secrets/wincert/${var.cert_ver}"
+      certificate_url           = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${var.cert_ver}"
       certificate_store         = "My"
     }
   }

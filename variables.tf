@@ -24,12 +24,20 @@ variable "arm_user_id" {
   type = "string"
 }
 ########## Gloablly Used Variables ###############
-variable "prefix" {
-  default = "dwto-dev"
+
+variable "loc" {
+  #default = "eus"
+  type = "string"
+}
+
+variable "env" {
+  #default = "dev"
+  type = "string"
 }
 
 variable "location" {
-  default = "East US"
+  #default = "East US"
+  type = "string"
 }
 
 ########### namespaces ######################

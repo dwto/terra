@@ -1,7 +1,9 @@
 resource "azurerm_template_deployment" "servicefabric" {
-  name                          = "${var.prefix}-servicefabric"
+  name                          = "${var.loc}${var.env}${var.sf_namespace}"
   resource_group_name           = "${azurerm_resource_group.service_bus_rg.name}"
   deployment_mode               = "Incremental"
+
+  #depends_on                    = ["module.redis.certificate_thumbprint"]
 
   template_body = <<DEPLOY
 {
@@ -10,7 +12,6 @@ resource "azurerm_template_deployment" "servicefabric" {
 
   "parameters": {
     "clusterName": {
-      "defaultValue": "Cluster",
       "type": "String",
       "metadata": {
         "description": "Name of your cluster - Between 3 and 23 characters. Letters and numbers only"
@@ -29,7 +30,6 @@ resource "azurerm_template_deployment" "servicefabric" {
       }
     },
     "certificateStoreValue": {
-      "defaultValue": "My",
       "allowedValues": [
         "My"
       ],
@@ -39,7 +39,6 @@ resource "azurerm_template_deployment" "servicefabric" {
       }
     },
     "supportLogStorageAccountName": {
-      "defaultValue": "supportlogstorageaccount",
       "type": "String",
       "metadata": {
         "description": "Name for the storage account that contains support logs from the cluster"
@@ -183,7 +182,7 @@ resource "azurerm_template_deployment" "servicefabric" {
   DEPLOY
 
   parameters {
-    "clusterName"                       = "${var.sf_namespace}"
+    "clusterName"                       = "${var.loc}${var.env}${var.sf_namespace}"
     "clusterLocation"                   = "${azurerm_resource_group.service_bus_rg.location}"
     "certificateThumbprint"             = "${var.cert_thumb}"
     "certificateStoreValue"             = "My"

@@ -1,6 +1,6 @@
-output "template_out" {
-  value           = "${module.servicebus.template_out}"
-}
+#output "template_out" {
+#  value           = "${module.servicebus.template_out}"
+#}
 
 output "vault_uri" {
   value           = "${module.redis.vault_uri}"

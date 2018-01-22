@@ -1,6 +1,6 @@
 # Blob storage accounts
 resource "azurerm_storage_account" "sbstrgacc" {
-  name                        = "servicebusstorageaccount"
+  name                        = "${var.loc}${var.env}${var.sb_namespace}stgacc"
   resource_group_name         = "${azurerm_resource_group.service_bus_rg.name}"
   location                    = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier                = "Standard"
@@ -9,7 +9,7 @@ resource "azurerm_storage_account" "sbstrgacc" {
 }
 
 resource "azurerm_storage_container" "sb_storage_container" {
-  name                      = "vhds"
+  name                      = "${var.loc}${var.env}${var.sb_namespace}vhds"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   storage_account_name      = "${azurerm_storage_account.sbstrgacc.name}"
   container_access_type     = "private" 
@@ -17,7 +17,7 @@ resource "azurerm_storage_container" "sb_storage_container" {
 
 # Blob storage
 resource "azurerm_storage_blob" "sb_blob" {
-  name                      = "${var.prefix}-${var.sb_blob}"
+  name                      = "${var.loc}${var.env}${var.sb_namespace}${var.sb_blob}"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   storage_account_name      = "${azurerm_storage_account.sbstrgacc.name}"
   storage_container_name    = "${azurerm_storage_container.sb_storage_container.name}"
@@ -25,7 +25,7 @@ resource "azurerm_storage_blob" "sb_blob" {
 
 # supportLogStorageAccount
 resource "azurerm_storage_account" "supportLogStorageAccount" {
-  name                      = "supportlogstorageaccount"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}logacc"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -34,7 +34,7 @@ resource "azurerm_storage_account" "supportLogStorageAccount" {
 
 # applicationDiagnosticsStorageAccountType 
 resource "azurerm_storage_account" "appdiagstrg" {
-  name                      = "appdiagstrg" 
+  name                      = "${var.loc}${var.env}${var.sf_namespace}diag" 
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -43,7 +43,7 @@ resource "azurerm_storage_account" "appdiagstrg" {
 
 # 5 separate storage accounts for application
 resource "azurerm_storage_account" "sf_storage_account01" {
-  name                      = "sfstorageaccount01"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}stg01"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -51,7 +51,7 @@ resource "azurerm_storage_account" "sf_storage_account01" {
 }
 
 resource "azurerm_storage_account" "sf_storage_account02" {
-  name                      = "sfstorageaccount02"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}stg02"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -59,7 +59,7 @@ resource "azurerm_storage_account" "sf_storage_account02" {
 }
 
 resource "azurerm_storage_account" "sf_storage_account03" {
-  name                      = "sfstorageaccount03"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}stg03"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -67,7 +67,7 @@ resource "azurerm_storage_account" "sf_storage_account03" {
 }
 
 resource "azurerm_storage_account" "sf_storage_account04" {
-  name                      = "sfstorageaccount04"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}stg04"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"
@@ -75,7 +75,7 @@ resource "azurerm_storage_account" "sf_storage_account04" {
 }
 
 resource "azurerm_storage_account" "sf_storage_account05" {
-  name                      = "sfstorageaccount05"
+  name                      = "${var.loc}${var.env}${var.sf_namespace}stg05"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   location                  = "${azurerm_resource_group.service_bus_rg.location}"
   account_tier              = "Standard"

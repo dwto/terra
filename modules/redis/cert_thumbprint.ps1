@@ -1,4 +1,7 @@
-$cert = az keyvault certificate show --vault-name dwto-dev-vault --name wincert
+$vault = "$ENV:TF_VAR_loc$ENV:TF_VAR_env" + "vault"
+$name = "$ENV:TF_VAR_loc$ENV:TF_VAR_env" + "wincert"
+
+$cert = az keyvault certificate show --vault-name $vault --name $name 
 
 foreach ($line in $cert){
     if ($line -like "*x509ThumbprintHex*") {

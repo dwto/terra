@@ -1,5 +1,5 @@
 resource "azurerm_key_vault" "vault" {
-  name                              = "${var.prefix}-vault"
+  name                              = "${var.loc}${var.env}vault"
   location                          = "${azurerm_resource_group.redis_rg.location}"
   resource_group_name               = "${azurerm_resource_group.redis_rg.name}"
   enabled_for_deployment            = true
@@ -40,7 +40,7 @@ resource "azurerm_key_vault" "vault" {
 
 # Generate the certificate. Need to manually fill in the vaule. 
 resource "azurerm_key_vault_certificate" "wincert" {
-  name    = "wincert"
+  name    = "${var.loc}${var.env}wincert"
   vault_uri = "${azurerm_key_vault.vault.vault_uri}"
 
   certificate_policy {

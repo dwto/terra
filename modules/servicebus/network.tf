@@ -1,20 +1,20 @@
 # Virtual Network
 resource "azurerm_virtual_network" "vnet" {
-    name                        = "vnet"
+    name                        = "${var.loc}${var.env}${var.sf_namespace}vnet"
     address_space               = ["10.0.0.0/16"]
     location                    = "${azurerm_resource_group.service_bus_rg.location}"
     resource_group_name         = "${azurerm_resource_group.service_bus_rg.name}"
 }
 
 resource "azurerm_subnet" "subnet0" {
-    name                        = "Subnet-0"
+    name                        = "${var.loc}${var.env}${var.sf_namespace}Subnet-0"
     resource_group_name         = "${azurerm_resource_group.service_bus_rg.name}"
     virtual_network_name        = "${azurerm_virtual_network.vnet.name}"
     address_prefix              = "10.0.0.0/24"
 }
 
 resource "azurerm_public_ip" "loadbalancer_publicip" {
-    name                         = "LoadBalancerIP"
+    name                         = "${var.loc}${var.env}${var.sf_namespace}loadbalancerip"
     location                     = "${azurerm_resource_group.service_bus_rg.location}"
     resource_group_name          = "${azurerm_resource_group.service_bus_rg.name}"
     public_ip_address_allocation = "static"
@@ -23,7 +23,7 @@ resource "azurerm_public_ip" "loadbalancer_publicip" {
 
 # Load Balancer
 resource "azurerm_lb" "Loadbalancer" {
-    name                            = "LoadBalancer"
+    name                            = "${var.loc}${var.env}${var.sf_namespace}loadbalancer"
     location                        = "${azurerm_resource_group.service_bus_rg.location}"
     resource_group_name             = "${azurerm_resource_group.service_bus_rg.name}"
     
@@ -34,16 +34,16 @@ resource "azurerm_lb" "Loadbalancer" {
 }
 
 resource "azurerm_lb_backend_address_pool" "lb_backend" {
+  name                      = "${var.loc}${var.env}${var.sf_namespace}backendaddresspool"
   resource_group_name       = "${azurerm_resource_group.service_bus_rg.name}"
   loadbalancer_id           = "${azurerm_lb.Loadbalancer.id}"
-  name                      = "LBBEAddressPool"
 }
 
 # LoadBalancing Rules
 resource "azurerm_lb_rule" "LBRule" {
+  name                           = "LBRule"
   resource_group_name            = "${azurerm_resource_group.service_bus_rg.name}"
   loadbalancer_id                = "${azurerm_lb.Loadbalancer.id}"
-  name                           = "LBRule"
   protocol                       = "Tcp"
   frontend_port                  = 19000
   backend_port                   = 19000 
