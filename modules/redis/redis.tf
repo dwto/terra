@@ -15,5 +15,7 @@ resource "azurerm_redis_cache" "redis" {
   sku_name            = "Basic"
   enable_non_ssl_port = false
 
+  depends_on          = ["azurerm_key_vault.vault"]
+
   redis_configuration {}
 }
