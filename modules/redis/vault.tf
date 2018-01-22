@@ -38,7 +38,6 @@ resource "azurerm_key_vault" "vault" {
   }
 }
 
-# Generate the certificate. Need to manually fill in the vaule. 
 resource "azurerm_key_vault_certificate" "wincert" {
   name    = "${var.loc}${var.env}wincert"
   vault_uri = "${azurerm_key_vault.vault.vault_uri}"
@@ -76,4 +75,6 @@ resource "azurerm_key_vault_certificate" "wincert" {
         validity_in_months      = 12
     }
   }
+
+  depends_on = ["azurerm_key_vault.vault"]
 }

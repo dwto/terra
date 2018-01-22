@@ -30,7 +30,7 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
         "enableParallelJobs":   true,
         "nicPrefixOverride":    "10.0.0.0/24",
         "certificate": {
-            "thumbprint":      "${var.cert_thumb}",
+            "thumbprint":      "${data.external.certificate_thumbprint.result.thumbprint}",
             "x509StoreName":   "My"
         }
       }
@@ -131,14 +131,14 @@ resource "azurerm_virtual_machine_scale_set" "vmScaleSet" {
     provision_vm_agent = true
     winrm = {
       protocol            = "https"
-      certificate_url     = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${var.cert_ver}"
+      certificate_url     = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${data.external.certificate_thumbprint.result.version}"
     }
   }
 
   os_profile_secrets {
     source_vault_id = "${var.vault_id}"
     vault_certificates {
-      certificate_url           = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${var.cert_ver}"
+      certificate_url           = "${var.vault_uri}secrets/${var.loc}${var.env}wincert/${data.external.certificate_thumbprint.result.version}"
       certificate_store         = "My"
     }
   }

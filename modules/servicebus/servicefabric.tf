@@ -3,7 +3,7 @@ resource "azurerm_template_deployment" "servicefabric" {
   resource_group_name           = "${azurerm_resource_group.service_bus_rg.name}"
   deployment_mode               = "Incremental"
 
-  #depends_on                    = ["module.redis.certificate_thumbprint"]
+  depends_on                    = ["data.external.certificate_thumbprint"]
 
   template_body = <<DEPLOY
 {
@@ -102,6 +102,9 @@ resource "azurerm_template_deployment" "servicefabric" {
     },
     "lbIPName": {
       "type": "String"
+    },
+    "vault_id": {
+      "type": "String"
     }
   },
 
@@ -184,7 +187,7 @@ resource "azurerm_template_deployment" "servicefabric" {
   parameters {
     "clusterName"                       = "${var.loc}${var.env}${var.sf_namespace}"
     "clusterLocation"                   = "${azurerm_resource_group.service_bus_rg.location}"
-    "certificateThumbprint"             = "${var.cert_thumb}"
+    "certificateThumbprint"             = "${data.external.certificate_thumbprint.result.thumbprint}"
     "certificateStoreValue"             = "My"
     "supportLogStorageBlobEndPoint"     = "${azurerm_storage_account.supportLogStorageAccount.primary_blob_endpoint}"
     "supportLogStorageQueueEndPoint"    = "${azurerm_storage_account.supportLogStorageAccount.primary_queue_endpoint}"
@@ -192,7 +195,9 @@ resource "azurerm_template_deployment" "servicefabric" {
     "supportLogStorageAccountName"      = "${azurerm_storage_account.supportLogStorageAccount.name}"
     "vmNodeType0Name"                   = "${var.ss_namespace}"
     "lbIPName"                          = "${azurerm_public_ip.loadbalancer_publicip.fqdn}"
+    "vault_id"                           = "${var.vault_id}"
 
+    # Other variables
     #"clusterProtectionLevel"         = "EncryptAndSign"
     #"nt0fabricHttpGatewayPort"       = "${azurerm_lb_rule.LBHttpRule.frontend_port}"
     #"nt0applicationEndPort"          = 30000

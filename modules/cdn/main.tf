@@ -3,7 +3,7 @@ variable "env" {}
 variable "location" {}
 
 resource "azurerm_resource_group" "cdn_rg" {
-    name        = "${var.loc}${var.env}${var.cdn_namespace}"
+    name        = "${var.loc}-${var.env}-${var.cdn_namespace}"
     location    = "${var.location}"
 }
 
@@ -38,8 +38,6 @@ resource "azurerm_cdn_endpoint" "cdn_endpoint" {
   origin {
     name      = "${var.loc}${var.env}${var.cdn_namespace}-blob-core-windows-net"
     host_name = "${var.loc}${var.env}${var.cdn_namespace}.blob.core.windows.net"
-    #name      = "exampleCdnOrigin"
-    #host_name = "www.example.com"
   }
 
   origin_path           = "/cdn"
