@@ -19,5 +19,8 @@
 # Run
 `Terraform apply`
 
+#Note, May need to run terraform apply twice. module.redis.azurerm_key_vault.vault fails in the first run but
+#is resolved in the second one.
+
 # Destroy
 `Terraform destroy -force`
