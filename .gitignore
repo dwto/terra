@@ -2,3 +2,4 @@ setenv.ps1
 .terraform
 *.tfstate
 *.backup
+*.info

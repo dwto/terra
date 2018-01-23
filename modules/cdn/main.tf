@@ -11,8 +11,7 @@ resource "azurerm_cdn_profile" "cdn_profile" {
   name                = "${var.loc}${var.env}${var.cdn_namespace}"
   location            = "${var.location}"
   resource_group_name = "${azurerm_resource_group.cdn_rg.name}"
-  #TODO FIX THIS VALUE
-  #sku                 = "Premium_Verizon"
+  #TODO: original value is premium_version
   sku                 = "Standard_verizon"
 }
 
@@ -28,13 +27,20 @@ resource "azurerm_storage_account" "cdn_storage_account" {
   account_encryption_source = "Microsoft.Storage"
 }
 
+data "external" "CORS" {
+  program       = ["Powershell.exe", "./modules/cdn/CORS.ps1"]
+  query         = {
+    key = "${azurerm_storage_account.cdn_storage_account.primary_access_key}"
+    name = "${azurerm_storage_account.cdn_storage_account.name}"
+  }
+}
+
 resource "azurerm_cdn_endpoint" "cdn_endpoint" {
   name                = "${var.loc}${var.env}${var.cdn_namespace}"
   profile_name        = "${azurerm_cdn_profile.cdn_profile.name}"
   location            = "${azurerm_resource_group.cdn_rg.location}"
   resource_group_name = "${azurerm_resource_group.cdn_rg.name}"
 
-  # change here
   origin {
     name      = "${var.loc}${var.env}${var.cdn_namespace}-blob-core-windows-net"
     host_name = "${var.loc}${var.env}${var.cdn_namespace}.blob.core.windows.net"

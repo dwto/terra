@@ -75,6 +75,4 @@ resource "azurerm_key_vault_certificate" "wincert" {
         validity_in_months      = 12
     }
   }
-
-  depends_on = ["azurerm_key_vault.vault"]
 }
